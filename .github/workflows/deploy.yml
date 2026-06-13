@@ -98,11 +98,13 @@ jobs:
           NEXT_PUBLIC_API_URL: /api/proxy
 
       - name: Deploy to Vercel
+        run: |
+          cd frontend
+          rm -rf .vercel
+          npx vercel --prod \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --scope=${{ secrets.VERCEL_ORG_ID }} \
+            --yes
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          cd frontend
-          mkdir -p .vercel
-          echo '{"projectId":"${{ secrets.VERCEL_PROJECT_ID }}","orgId":"${{ secrets.VERCEL_ORG_ID }}"}' > .vercel/project.json
-          npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
