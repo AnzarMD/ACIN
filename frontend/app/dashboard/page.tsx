@@ -145,7 +145,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-2xl font-bold text-orange-600">{metrics.fraud_metrics.condition_mismatch_flagged}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Soft FLags</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Soft Flags</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-green-600">₹{metrics.fraud_metrics.fraud_prevented_value_inr.toLocaleString()}</p>
