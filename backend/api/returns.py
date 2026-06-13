@@ -62,7 +62,11 @@ def _fetch_image_b64(url: str) -> str:
 async def validate_only(req: ValidateRequest):
     """Pre-submission image validation using Nova Pro vision + forensic signals.
 
-    Multi-stage check:
+    Special case: 'not_as_described' and 'wrong_item' reasons skip product-matching
+    validation entirely and route to manual review — because the customer received
+    the wrong item and cannot be expected to photograph the correct product.
+
+    Multi-stage check (all other reasons):
     1. EXIF metadata forensics — AI-generated images lack camera metadata
     2. Nova Pro vision — detect AI generation, compositing, impossible scale
     3. Product match — if reference image provided, confirm same product model
@@ -74,6 +78,31 @@ async def validate_only(req: ValidateRequest):
     import io
     from storage.s3 import s3_client as s3
     from config import S3_BUCKET
+
+    # ── MANUAL REVIEW BYPASS ──────────────────────────────────────────────────
+    # "not_as_described" or "wrong_item": customer received wrong product entirely.
+    # Validation cannot work because the uploaded item IS different from the order.
+    # Skip validation, route directly to manual/tech review.
+    MANUAL_REVIEW_REASONS = {
+        "not_as_described", "wrong_item", "wrong item",
+        "not as described", "received wrong item", "wrong product",
+    }
+    reason_lower = (req.return_reason or "").lower().strip()
+    if any(r in reason_lower for r in MANUAL_REVIEW_REASONS):
+        return {
+            "fcs": 0.0,
+            "status": "MANUAL_REVIEW_REQUIRED",
+            "flagged_indexes": [],
+            "reason": "not_as_described",
+            "pipeline_blocked": False,
+            "manual_review": True,
+            "manual_review_message": (
+                "Your return has been flagged for manual verification. "
+                "A verified ACIN technician will contact you within 24 hours "
+                "to confirm the item mismatch and process your return."
+            ),
+        }
+    # ─────────────────────────────────────────────────────────────────────────
 
     def _get_bytes(url: str) -> bytes:
         if url.startswith("s3://"):

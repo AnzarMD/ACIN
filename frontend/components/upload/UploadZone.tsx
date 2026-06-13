@@ -12,6 +12,7 @@ export default function UploadZone() {
   const [flaggedIndex, setFlaggedIndex] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [validatedUrls, setValidatedUrls] = useState<string[]>([]);
+  const [manualReviewMessage, setManualReviewMessage] = useState("");
   const router = useRouter();
 
   // Product details form
@@ -81,10 +82,18 @@ export default function UploadZone() {
           category: category || "",
           original_price: parseInt(originalPrice) || 5000,
           reference_image_url: referenceImageUrl || "",
-          return_reason: returnReason || "pre_check",
+          return_reason: effectiveReason || "pre_check",
         }),
       });
       const data = await res.json();
+
+      // Special case: manual review bypass for "not_as_described" / wrong item
+      if (data.manual_review) {
+        setValidation("manual_review" as ValidationState);
+        setManualReviewMessage(data.manual_review_message || "");
+        setValidatedUrls(s3Urls);
+        return;
+      }
 
       if (data.fcs >= 0.85 || data.pipeline_blocked) {
         setValidation("hard_block");
@@ -187,7 +196,7 @@ export default function UploadZone() {
           </div>
         )}
 
-        <ValidationBanner state={validation} />
+        <ValidationBanner state={validation} manualMessage={manualReviewMessage} />
       </section>
 
       {/* Step 2: Product Details */}
@@ -360,6 +369,16 @@ export default function UploadZone() {
             {submitting ? "Analysing with 6 AI Agents..." : "Analyse with AI →"}
           </button>
         )}
+        {(validation as string) === "manual_review" && (
+          <button
+            onClick={handleSubmit}
+            disabled={!isFormValid || submitting}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitting ? "Submitting..." : "Submit for Manual Review →"}
+          </button>
+        )}
         {validation === "soft_flag" && (
           <button
             onClick={() => { setImages([]); setValidation("idle"); setFlaggedIndex([]); }}
@@ -386,18 +405,20 @@ export default function UploadZone() {
   );
 }
 
-function ValidationBanner({ state }: { state: ValidationState }) {
+function ValidationBanner({ state, manualMessage }: { state: ValidationState; manualMessage?: string }) {
   if (state === "idle") return null;
-  const config = {
+  const config: Record<string, { icon: React.ReactNode; text: string; bg: string }> = {
     validating: { icon: <Loader2 className="h-5 w-5 animate-spin text-blue-500" />, text: "Verifying image authenticity with AI...", bg: "bg-blue-50 border-blue-200" },
     pass: { icon: <CheckCircle className="h-5 w-5 text-green-500" />, text: "✓ Photos verified — real product images confirmed", bg: "bg-green-50 border-green-200" },
     soft_flag: { icon: <AlertTriangle className="h-5 w-5 text-yellow-500" />, text: "Image quality issue. Please retake in better lighting.", bg: "bg-yellow-50 border-yellow-200" },
     hard_block: { icon: <XCircle className="h-5 w-5 text-red-500" />, text: "Images failed verification. Please upload original unedited product photos.", bg: "bg-red-50 border-red-200" },
+    manual_review: { icon: <AlertTriangle className="h-5 w-5 text-blue-600" />, text: manualMessage || "Manual verification requested.", bg: "bg-blue-50 border-blue-300" },
   };
   const c = config[state];
+  if (!c) return null;
   return (
-    <div className={`flex items-center gap-3 p-4 rounded-lg border mt-4 ${c.bg}`}>
-      {c.icon}
+    <div className={`flex items-start gap-3 p-4 rounded-lg border mt-4 ${c.bg}`}>
+      <div className="mt-0.5 shrink-0">{c.icon}</div>
       <span className="text-sm font-medium">{c.text}</span>
     </div>
   );

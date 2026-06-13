@@ -2,7 +2,7 @@
  * Shared TypeScript types for ACIN frontend
  */
 
-export type ValidationState = "idle" | "validating" | "pass" | "soft_flag" | "hard_block";
+export type ValidationState = "idle" | "validating" | "pass" | "soft_flag" | "hard_block" | "manual_review";
 
 export type Destination =
   | "INSTANT_RESALE"
