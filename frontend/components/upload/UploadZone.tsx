@@ -6,6 +6,8 @@ import { useDropzone } from "react-dropzone";
 import { Upload, CheckCircle, AlertTriangle, XCircle, Loader2 } from "lucide-react";
 import type { ValidationState } from "@/lib/types";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
+
 export default function UploadZone() {
   const [images, setImages] = useState<File[]>([]);
   const [validation, setValidation] = useState<ValidationState>("idle");
@@ -51,7 +53,7 @@ export default function UploadZone() {
 
       for (const file of images) {
         const urlRes = await fetch(
-          `http://localhost:8000/v1/returns/${tempId}/upload-url?filename=${encodeURIComponent(file.name)}`,
+          `${API_BASE}/returns/${tempId}/upload-url?filename=${encodeURIComponent(file.name)}`,
           { method: "POST" }
         );
         const urlData = await urlRes.json();
@@ -73,7 +75,7 @@ export default function UploadZone() {
       }
 
       // Call real backend validation
-      const res = await fetch("http://localhost:8000/v1/returns/validate", {
+      const res = await fetch(`${API_BASE}/returns/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -123,7 +125,7 @@ export default function UploadZone() {
         ? validatedUrls
         : images.map((f) => `s3://acin-uploads-622623003797/returns/temp/${f.name}`);
 
-      const response = await fetch("http://localhost:8000/v1/returns/", {
+      const response = await fetch(`${API_BASE}/returns/`, {
         method: "POST",
         body: JSON.stringify({
           product_id: productId || productName.replace(/\s+/g, "-").toUpperCase(),
@@ -221,7 +223,7 @@ export default function UploadZone() {
                 if (!url) return;
                 urlInput.disabled = true;
                 try {
-                  const res = await fetch("http://localhost:8000/v1/products/extract", {
+                  const res = await fetch(`${API_BASE}/products/extract`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ url }),

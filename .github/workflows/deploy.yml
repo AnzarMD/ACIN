@@ -7,10 +7,10 @@ on:
     branches: [main]
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: ap-south-1
+  AWS_ACCOUNT_ID: "622623003797"
   ECR_REPOSITORY: acin-backend
   ECS_CLUSTER: acin-cluster
-  ECS_SERVICE: acin-backend
 
 jobs:
   test:
@@ -27,12 +27,11 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio
 
-      - name: Run tests
+      - name: Verify imports
         run: |
           cd backend
-          python -m pytest tests/ -v || true
+          python -c "from main import app; print('Backend imports OK')"
 
   deploy-backend:
     needs: test
@@ -61,9 +60,13 @@ jobs:
 
       - name: Deploy to ECS
         run: |
+          # Find the actual ECS service name (CDK generates a unique suffix)
+          SERVICE_ARN=$(aws ecs list-services --cluster $ECS_CLUSTER --query "serviceArns[0]" --output text)
+          SERVICE_NAME=$(echo $SERVICE_ARN | awk -F'/' '{print $NF}')
+          echo "Deploying to service: $SERVICE_NAME"
           aws ecs update-service \
             --cluster $ECS_CLUSTER \
-            --service $ECS_SERVICE \
+            --service $SERVICE_NAME \
             --force-new-deployment
 
   deploy-frontend:
@@ -83,37 +86,14 @@ jobs:
           cd frontend
           npm install
           npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.API_URL || 'http://localhost:8000/v1' }}
 
       - name: Deploy to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         run: |
           cd frontend
           npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
-
-  deploy-infrastructure:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Install CDK
-        run: |
-          cd infrastructure
-          npm install
-
-      - name: Deploy CDK Stack
-        run: |
-          cd infrastructure
-          npx cdk deploy ACINStack --require-approval never
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

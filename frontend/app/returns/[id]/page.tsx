@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, CheckCircle } from "lucide-react";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
 import ConditionCard from "@/components/analysis/ConditionCard";
 import DemandMap from "@/components/analysis/DemandMap";
 import LogisticsCard from "@/components/analysis/LogisticsCard";
@@ -12,7 +14,7 @@ import ValidationStatusCard from "@/components/validation/ValidationStatus";
 
 export default function ReturnAnalysisPage() {
   const params = useParams();
-  const returnId = params.id as string;
+  const returnId = (params?.id as string) || "";
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("ANALYZING");
   const [validation, setValidation] = useState<any>(null);
@@ -29,7 +31,7 @@ export default function ReturnAnalysisPage() {
     const fetchData = async () => {
       try {
         // Fetch all return items
-        const res = await fetch(`http://localhost:8000/v1/returns/${returnId}`);
+        const res = await fetch(`${API_BASE}/returns/${returnId}`);
         if (!res.ok) {
           setError("Return not found");
           setLoading(false);
@@ -248,7 +250,7 @@ function ResaleAction({ returnId }: { returnId: string }) {
   const handleList = async () => {
     setListing(true);
     try {
-      const res = await fetch(`http://localhost:8000/v1/returns/${returnId}/list-resale`, {
+      const res = await fetch(`${API_BASE}/returns/${returnId}/list-resale`, {
         method: "POST",
       });
       const data = await res.json();

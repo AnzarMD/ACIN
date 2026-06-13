@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
 import {
   Leaf,
   DollarSign,
@@ -41,7 +43,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:8000/v1/analytics/impact")
+    fetch(`${API_BASE}/analytics/impact`)
       .then((r) => r.json())
       .then((data) => { setMetrics(data); setLoading(false); })
       .catch(() => setLoading(false));

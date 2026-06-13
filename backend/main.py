@@ -19,7 +19,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://acin.vercel.app",
+        "https://acinfrontend.vercel.app",
         "http://localhost:3000",
+        "*",
     ],
     allow_credentials=True,
     allow_methods=["*"],
