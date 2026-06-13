@@ -1,0 +1,100 @@
+{
+    "executionRoleArn":  "arn:aws:iam::622623003797:role/ACINStack-ACINTaskDefExecutionRoleA31BC514-jimbulmE8NH4",
+    "networkMode":  "awsvpc",
+    "cpu":  "2048",
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "containerDefinitions":  [
+                                 {
+                                     "name":  "ACINBackend",
+                                     "image":  "622623003797.dkr.ecr.ap-south-1.amazonaws.com/acin-backend:latest",
+                                     "cpu":  0,
+                                     "links":  [
+
+                                               ],
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  8000,
+                                                              "hostPort":  8000,
+                                                              "protocol":  "tcp"
+                                                          }
+                                                      ],
+                                     "essential":  true,
+                                     "entryPoint":  [
+
+                                                    ],
+                                     "command":  [
+
+                                                 ],
+                                     "environment":  [
+                                                         {
+                                                             "name":  "S3_BUCKET",
+                                                             "value":  "acin-uploads-622623003797"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_REGION",
+                                                             "value":  "us-east-1"
+                                                         },
+                                                         {
+                                                             "name":  "DYNAMODB_TABLE",
+                                                             "value":  "ACIN_Main"
+                                                         },
+                                                         {
+                                                             "name":  "BEDROCK_MODEL_ID",
+                                                             "value":  "anthropic.claude-sonnet-4-6-20250514-v1:0"
+                                                         }
+                                                     ],
+                                     "environmentFiles":  [
+
+                                                          ],
+                                     "mountPoints":  [
+
+                                                     ],
+                                     "volumesFrom":  [
+
+                                                     ],
+                                     "secrets":  [
+
+                                                 ],
+                                     "dnsServers":  [
+
+                                                    ],
+                                     "dnsSearchDomains":  [
+
+                                                          ],
+                                     "extraHosts":  [
+
+                                                    ],
+                                     "dockerSecurityOptions":  [
+
+                                                               ],
+                                     "dockerLabels":  {
+
+                                                      },
+                                     "ulimits":  [
+
+                                                 ],
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-group":  "/acin/backend",
+                                                                              "awslogs-region":  "ap-south-1",
+                                                                              "awslogs-stream-prefix":  "acin-backend"
+                                                                          },
+                                                              "secretOptions":  [
+
+                                                                                ]
+                                                          },
+                                     "systemControls":  [
+
+                                                        ],
+                                     "credentialSpecs":  [
+
+                                                         ]
+                                 }
+                             ],
+    "family":  "ACINStackACINTaskDefADFEC252",
+    "taskRoleArn":  "arn:aws:iam::622623003797:role/ACINStack-ACINTaskDefTaskRole428D3473-LxXjeF6Yx3Z1",
+    "memory":  "4096"
+}

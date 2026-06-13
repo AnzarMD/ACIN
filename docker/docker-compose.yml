@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_REGION=us-east-1
+      - S3_BUCKET=acin-uploads-local
+      - DYNAMODB_TABLE=ACIN_Main
+      - BEDROCK_MODEL_ID=anthropic.claude-sonnet-4-6-20250514-v1:0
+      - HIVE_API_KEY=${HIVE_API_KEY:-}
+      - COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID:-}
+      - COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID:-}
+    volumes:
+      - ../backend:/app
+    restart: unless-stopped
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8001:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb"]
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/v1
+    depends_on:
+      - backend
