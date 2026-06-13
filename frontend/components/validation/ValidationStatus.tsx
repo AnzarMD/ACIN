@@ -62,8 +62,8 @@ export default function ValidationStatusCard({ fcs, status, signals }: Validatio
       <div className="flex items-center gap-3">
         {config.icon}
         <div>
-          <p className="font-semibold text-gray-900">{config.title}</p>
-          <p className="text-sm text-gray-600">{config.subtitle}</p>
+          <p className="font-semibold text-gray-900 dark:text-gray-100">{config.title}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{config.subtitle}</p>
         </div>
         <span className={`ml-auto text-xs font-bold px-2 py-1 rounded ${config.badge}`}>
           {status}

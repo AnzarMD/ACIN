@@ -5,10 +5,10 @@ export default function Home() {
     <div className="space-y-12">
       {/* Hero */}
       <section className="text-center py-16">
-        <h1 className="text-5xl font-bold text-gray-900 mb-4">
+        <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
           Amazon Circular Intelligence Network
         </h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+        <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
           AI-Powered Multi-Agent Returns & Sustainable Resale Platform.
           Every return gets a second life — powered by 6 specialised AI agents.
         </p>
@@ -21,7 +21,7 @@ export default function Home() {
           </Link>
           <Link
             href="/dashboard"
-            className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition"
+            className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:bg-gray-800 transition"
           >
             View Impact Dashboard
           </Link>
@@ -38,7 +38,7 @@ export default function Home() {
 
       {/* Destinations */}
       <section>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Product Destinations</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Product Destinations</h2>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <DestinationCard color="green" label="Instant Resale" desc="Score >85, High Demand" />
           <DestinationCard color="blue" label="Refurbish" desc="Score 50-85, Repair ROI" />
@@ -50,7 +50,7 @@ export default function Home() {
 
       {/* Agent Pipeline */}
       <section>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">6-Agent AI Pipeline</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">6-Agent AI Pipeline</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <AgentCard step={0} name="Validation Gate" desc="AI image forgery detection" />
           <AgentCard step={1} name="Product Intelligence" desc="Condition & defect analysis" />
@@ -66,9 +66,9 @@ export default function Home() {
 
 function MetricCard({ label, value, improvement }: { label: string; value: string; improvement: string }) {
   return (
-    <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+    <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+      <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
       <p className="text-sm text-green-600 mt-1">{improvement}</p>
     </div>
   );
@@ -83,24 +83,24 @@ function DestinationCard({ color, label, desc }: { color: string; label: string;
     red: "bg-red-500",
   };
   return (
-    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+    <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm">
       <div className={`w-3 h-3 rounded-full ${colorMap[color]} mb-2`} />
-      <p className="font-semibold text-gray-900">{label}</p>
-      <p className="text-xs text-gray-500 mt-1">{desc}</p>
+      <p className="font-semibold text-gray-900 dark:text-gray-100">{label}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{desc}</p>
     </div>
   );
 }
 
 function AgentCard({ step, name, desc }: { step: number; name: string; desc: string }) {
   return (
-    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+    <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm">
       <div className="flex items-center gap-2 mb-2">
         <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-1 rounded">
           Step {step}
         </span>
       </div>
-      <p className="font-semibold text-gray-900">{name}</p>
-      <p className="text-sm text-gray-500 mt-1">{desc}</p>
+      <p className="font-semibold text-gray-900 dark:text-gray-100">{name}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{desc}</p>
     </div>
   );
 }

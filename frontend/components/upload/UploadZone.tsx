@@ -166,17 +166,17 @@ export default function UploadZone() {
     <div className="max-w-3xl mx-auto space-y-8">
       {/* Step 1: Upload Photos */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Upload Product Photos</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">1. Upload Product Photos</h2>
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition ${
-            isDragActive ? "border-orange-500 bg-orange-50" : "border-gray-300 hover:border-gray-400"
+            isDragActive ? "border-orange-500 bg-orange-50" : "border-gray-300 dark:border-gray-600 hover:border-gray-400"
           }`}
         >
           <input {...getInputProps()} />
-          <Upload className="mx-auto h-10 w-10 text-gray-400 mb-3" />
-          <p className="text-gray-600">Drag & drop product photos, or click to select</p>
-          <p className="text-sm text-gray-400 mt-1">JPG, PNG, WebP only (no AVIF/HEIC)</p>
+          <Upload className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500 mb-3" />
+          <p className="text-gray-600 dark:text-gray-400">Drag & drop product photos, or click to select</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">JPG, PNG, WebP only (no AVIF/HEIC)</p>
         </div>
 
         {images.length > 0 && (
@@ -187,7 +187,7 @@ export default function UploadZone() {
                 className={`relative rounded-lg overflow-hidden border-2 ${
                   flaggedIndex.includes(idx)
                     ? "border-red-500"
-                    : validation === "pass" ? "border-green-500" : "border-gray-200"
+                    : validation === "pass" ? "border-green-500" : "border-gray-200 dark:border-gray-700"
                 }`}
               >
                 <img src={URL.createObjectURL(file)} alt={`Upload ${idx + 1}`} className="w-full h-20 object-cover" />
@@ -203,17 +203,17 @@ export default function UploadZone() {
 
       {/* Step 2: Product Details */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">2. Product Details</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">2. Product Details</h2>
 
         {/* Product URL Auto-fill */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Paste Product Link (auto-fills details)</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Paste Product Link (auto-fills details)</label>
           <div className="flex gap-2">
             <input
               type="url"
               id="productUrl"
               placeholder="e.g., https://www.amazon.in/dp/B09XS7JWHH or Flipkart link"
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
             <button
               type="button"
@@ -245,36 +245,36 @@ export default function UploadZone() {
               Auto-Fill
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-1">Supports Amazon.in, Flipkart, and other e-commerce links</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Supports Amazon.in, Flipkart, and other e-commerce links</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Product Name *</label>
             <input
               type="text"
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
               placeholder="e.g., Nike Air Max 270, Sony WH-1000XM5"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Product / ASIN ID</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Product / ASIN ID</label>
             <input
               type="text"
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
               placeholder="e.g., B09XS7JWHH"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Category *</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             >
               <option value="">Select category...</option>
               <option value="Electronics">Electronics</option>
@@ -291,13 +291,13 @@ export default function UploadZone() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Original Price (₹) *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Original Price (₹) *</label>
             <input
               type="number"
               value={originalPrice}
               onChange={(e) => setOriginalPrice(e.target.value)}
               placeholder="e.g., 4999"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -305,17 +305,17 @@ export default function UploadZone() {
 
       {/* Step 3: Return Reason */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">3. Return Information</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">3. Return Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Return Reason *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Return Reason *</label>
             <select
               value={returnReason}
               onChange={(e) => {
                 setReturnReason(e.target.value);
                 if (e.target.value !== "other") setCustomReason("");
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             >
               <option value="">Select a reason...</option>
               <option value="defective">Defective / Not Working</option>
@@ -337,13 +337,13 @@ export default function UploadZone() {
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">City</label>
             <input
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="e.g., Mumbai, Delhi, Bangalore"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
         </div>

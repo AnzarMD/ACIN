@@ -36,7 +36,7 @@ export function DecisionCard({ decision }: DecisionCardProps) {
         <Icon className={`h-8 w-8 ${colors.text}`} />
         <div>
           <span className={`${colors.text} font-bold text-xl`}>{cfg.label}</span>
-          <span className="text-gray-500 text-sm ml-3">
+          <span className="text-gray-500 dark:text-gray-400 text-sm ml-3">
             {decision.confidence}% confidence
           </span>
         </div>
@@ -53,7 +53,7 @@ export function DecisionCard({ decision }: DecisionCardProps) {
       </div>
 
       {/* Explanation */}
-      <p className="text-gray-700 text-sm">{decision.explanation}</p>
+      <p className="text-gray-700 dark:text-gray-200 text-sm">{decision.explanation}</p>
 
       {/* Trust Badges */}
       <div className="flex gap-2 mt-4">
@@ -73,8 +73,8 @@ export function DecisionCard({ decision }: DecisionCardProps) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-lg font-bold text-gray-900">{value}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }

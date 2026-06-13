@@ -42,10 +42,10 @@ export default function PricingCard({ analysis }: PricingCardProps) {
     : 0;
 
   return (
-    <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+    <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
         <DollarSign className="h-5 w-5 text-green-500" />
-        <h3 className="font-semibold text-gray-900">Dynamic Pricing</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">Dynamic Pricing</h3>
         {discountPct > 0 && (
           <span className="ml-auto text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">
             {discountPct}% off original
@@ -55,7 +55,7 @@ export default function PricingCard({ analysis }: PricingCardProps) {
 
       {/* Original Price */}
       {analysis.original_price > 0 && (
-        <div className="text-sm text-gray-500 mb-4">
+        <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Original: <span className="line-through">₹{analysis.original_price.toLocaleString()}</span>
         </div>
       )}
@@ -68,14 +68,14 @@ export default function PricingCard({ analysis }: PricingCardProps) {
             className={`flex items-center justify-between p-3 rounded-lg border-2 ${
               analysis.recommended_strategy === s.key
                 ? s.color
-                : "border-gray-100 bg-gray-50"
+                : "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800"
             }`}
           >
             <div className="flex items-center gap-2">
               {s.icon}
               <div>
                 <p className="text-sm font-semibold">{s.label}</p>
-                <p className="text-xs text-gray-500">{s.time}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{s.time}</p>
               </div>
             </div>
             <div className="text-right">
@@ -90,7 +90,7 @@ export default function PricingCard({ analysis }: PricingCardProps) {
 
       {/* Market Insight */}
       {(analysis as any).market_insight && (
-        <p className="text-xs text-gray-500 mt-3 italic">{(analysis as any).market_insight}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 italic">{(analysis as any).market_insight}</p>
       )}
     </div>
   );
