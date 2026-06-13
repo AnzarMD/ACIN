@@ -98,7 +98,6 @@ jobs:
           NEXT_PUBLIC_API_URL: /api/proxy
 
       - name: Deploy to Vercel
-        if: ${{ vars.VERCEL_TOKEN != '' }}
         run: |
           cd frontend
           npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
