@@ -15,6 +15,14 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Dummy AWS creds so boto3 doesn't fail on import
+      AWS_ACCESS_KEY_ID: testing
+      AWS_SECRET_ACCESS_KEY: testing
+      AWS_DEFAULT_REGION: ap-south-1
+      AWS_REGION: ap-south-1
+      DYNAMODB_TABLE: ACIN_Main
+      S3_BUCKET: acin-uploads-test
     steps:
       - uses: actions/checkout@v4
 
@@ -27,11 +35,12 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
+          pip install pytest
 
-      - name: Verify imports
+      - name: Run tests
         run: |
           cd backend
-          python -c "from main import app; print('Backend imports OK')"
+          python -m pytest tests/ -v
 
   deploy-backend:
     needs: test
@@ -60,7 +69,6 @@ jobs:
 
       - name: Deploy to ECS
         run: |
-          # Find the actual ECS service name (CDK generates a unique suffix)
           SERVICE_ARN=$(aws ecs list-services --cluster $ECS_CLUSTER --query "serviceArns[0]" --output text)
           SERVICE_NAME=$(echo $SERVICE_ARN | awk -F'/' '{print $NF}')
           echo "Deploying to service: $SERVICE_NAME"
@@ -87,10 +95,10 @@ jobs:
           npm install
           npm run build
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.API_URL || 'http://localhost:8000/v1' }}
+          NEXT_PUBLIC_API_URL: /api/proxy
 
       - name: Deploy to Vercel
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        if: ${{ vars.VERCEL_TOKEN != '' }}
         run: |
           cd frontend
           npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
