@@ -485,6 +485,17 @@ async def list_for_resale(return_id: str):
     from db.buyers import match_buyers, notify_buyers_of_resale, get_buyer_notifications
     from db.dynamo import now_iso
 
+    CITY_COORDS = {
+        "Mumbai": (19.076, 72.877),
+        "Delhi": (28.614, 77.209),
+        "Bangalore": (12.972, 77.595),
+        "Chennai": (13.083, 80.271),
+        "Hyderabad": (17.385, 78.487),
+        "Pune": (18.520, 73.857),
+        "Kolkata": (22.573, 88.364),
+        "Jaipur": (26.912, 75.787),
+    }
+
     # Fetch the decision
     resp = table.get_item(Key={"PK": return_pk(return_id), "SK": "DECISION#LATEST"})
     decision = resp.get("Item")
@@ -511,10 +522,8 @@ async def list_for_resale(return_id: str):
     }
 
     if not listing["city"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Return has no city information. Please submit with a city.",
-        )
+        # No city — can still list but buyer matching won't have distance scoring
+        listing["city"] = "Unknown"
 
     # Create the resale listing record
     table.put_item(Item={
@@ -533,8 +542,42 @@ async def list_for_resale(return_id: str):
         "GSI5SK": f"PRICE#{listing['price']:08d}",
     })
 
-    # Match nearby buyers and notify them
-    matched = match_buyers(listing["city"], listing["category"], listing["price"])
+    # Resolve seller coordinates — prefer exact return location over city center
+    seller_lat, seller_lng = None, None
+
+    # Try exact coordinates from the return submission first
+    ret_lat = meta.get("lat") or meta.get("latitude")
+    ret_lng = meta.get("lng") or meta.get("longitude")
+    if ret_lat and ret_lng:
+        try:
+            seller_lat = float(ret_lat)
+            seller_lng = float(ret_lng)
+        except (TypeError, ValueError):
+            pass
+
+    # Fall back to city-center lookup if exact coords not available
+    if seller_lat is None or seller_lng is None:
+        city_key = listing["city"].strip()
+        if city_key in CITY_COORDS:
+            seller_lat, seller_lng = CITY_COORDS[city_key]
+
+    # Match nearby buyers — if no city/coords, use category-only matching
+    if listing["city"] == "Unknown" or (seller_lat is None and seller_lng is None):
+        # No location data — match by category and price across all cities
+        from boto3.dynamodb.conditions import Attr
+        all_buyers_resp = table.scan(FilterExpression=Attr("entity_type").eq("BUYER_SIGNAL"))
+        all_buyers = all_buyers_resp.get("Items", [])
+        matched = [
+            b for b in all_buyers
+            if (b.get("category_interest", "").lower() == listing["category"].lower()
+                or b.get("category_interest") == "Any")
+            and int(float(b.get("max_price", 0))) >= listing["price"]
+        ][:20]
+    else:
+        matched = match_buyers(
+            listing["city"], listing["category"], listing["price"],
+            seller_lat=seller_lat, seller_lng=seller_lng,
+        )
     notified_count = notify_buyers_of_resale(return_id, listing, matched)
 
     # Update return status to COMPLETED
@@ -546,7 +589,15 @@ async def list_for_resale(return_id: str):
         "destination": destination,
         "matched_buyers": notified_count,
         "buyers": [
-            {"name": b.get("name"), "city": b.get("city"), "email": b.get("email")}
+            {
+                "name": b.get("name"),
+                "city": b.get("city"),
+                "email": b.get("email"),
+                "distance_km": b.get("distance_km"),
+                "match_score": b.get("match_score"),
+                "lat": b.get("lat"),
+                "lng": b.get("lng"),
+            }
             for b in matched
         ],
         "message": f"Listed for resale. {notified_count} nearby buyers notified.",

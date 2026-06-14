@@ -4,6 +4,7 @@ Stores buyers with their product interests and location, matches them to
 resale listings, and records notifications when a resale decision is made.
 """
 
+import math
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -12,6 +13,17 @@ from boto3.dynamodb.conditions import Key
 
 from .dynamo import table, to_decimal, now_iso
 from .tables import return_pk
+
+
+def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate distance between two coordinates using Haversine formula."""
+    R = 6371  # Earth radius in km
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = (math.sin(dlat / 2) ** 2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(dlng / 2) ** 2)
+    return R * 2 * math.asin(math.sqrt(a))
 
 
 # ─── Buyer Registration ──────────────────────────────────────────────────────
@@ -79,10 +91,16 @@ def count_active_buyers(city: str, category: str) -> int:
     return count
 
 
-def match_buyers(city: str, category: str, price: int, limit: int = 20) -> list:
-    """Find buyers in the SAME city, interested in this category, within budget.
+def match_buyers(city: str, category: str, price: int, limit: int = 20,
+                 seller_lat: float = None, seller_lng: float = None) -> list:
+    """Find buyers interested in this category, within budget.
 
-    Strictly filters by city — no cross-city matching.
+    When seller_lat/lng are provided, calculates distance and computes a
+    composite match_score. Falls back to city-only matching otherwise.
+
+    Match score weights:
+      0.40 * interest + 0.25 * distance_score + 0.15 * price_affinity
+      + 0.10 * reliability + 0.10 * activity
     """
     all_buyers = list_all_buyers()
     matched = []
@@ -92,8 +110,6 @@ def match_buyers(city: str, category: str, price: int, limit: int = 20) -> list:
         buyer_category = b.get("category_interest", "")
         buyer_max = int(float(b.get("max_price", 0)))
 
-        # Strict city match (case-insensitive)
-        city_match = buyer_city.strip().lower() == city.strip().lower()
         # Category match or "Any"
         category_match = (
             buyer_category.strip().lower() == category.strip().lower()
@@ -102,8 +118,69 @@ def match_buyers(city: str, category: str, price: int, limit: int = 20) -> list:
         # Budget must cover the listing price
         budget_match = buyer_max >= price
 
-        if city_match and category_match and budget_match:
-            matched.append(b)
+        # If no seller coordinates, use strict city matching (backward compat)
+        if seller_lat is None or seller_lng is None:
+            city_match = buyer_city.strip().lower() == city.strip().lower()
+            if city_match and category_match and budget_match:
+                matched.append(b)
+            continue
+
+        # With coordinates: compute distance if buyer has lat/lng
+        buyer_lat = b.get("lat")
+        buyer_lng = b.get("lng")
+
+        if buyer_lat is not None and buyer_lng is not None:
+            distance_km = haversine_km(
+                seller_lat, seller_lng,
+                float(buyer_lat), float(buyer_lng)
+            )
+        else:
+            # No buyer coords — fall back to city match with default distance
+            city_match = buyer_city.strip().lower() == city.strip().lower()
+            if not city_match:
+                continue
+            distance_km = 10.0  # assume ~10km for same-city without coords
+
+        # Interest score: 1.0 for exact category, 0.7 for "Any"
+        if buyer_category.strip().lower() == category.strip().lower():
+            interest_score = 1.0
+        elif buyer_category == "Any":
+            interest_score = 0.7
+        else:
+            continue  # no category match at all
+
+        if not budget_match:
+            continue
+
+        # Distance score: closer is better, 50km = zero
+        distance_score = max(0.0, 1.0 - distance_km / 50.0)
+
+        # Price affinity: how well buyer's budget covers the price
+        price_affinity = min(1.0, buyer_max / max(price, 1))
+
+        # Reliability and activity: default 0.8 (future: from buyer history)
+        reliability = 0.8
+        activity = 0.8
+
+        # Composite match score
+        match_score = round(
+            0.40 * interest_score +
+            0.25 * distance_score +
+            0.15 * price_affinity +
+            0.10 * reliability +
+            0.10 * activity,
+            3
+        )
+
+        # Add computed fields to buyer dict
+        buyer_with_score = dict(b)
+        buyer_with_score["distance_km"] = round(distance_km, 2)
+        buyer_with_score["match_score"] = match_score
+        matched.append(buyer_with_score)
+
+    # Sort by match_score descending when scores are available
+    if seller_lat is not None and seller_lng is not None:
+        matched.sort(key=lambda x: x.get("match_score", 0), reverse=True)
 
     return matched[:limit]
 

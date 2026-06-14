@@ -9,6 +9,13 @@ import ConditionCard from "@/components/analysis/ConditionCard";
 import DemandMap from "@/components/analysis/DemandMap";
 import LogisticsCard from "@/components/analysis/LogisticsCard";
 import PricingCard from "@/components/pricing/PricingCard";
+import dynamic from "next/dynamic";
+
+// Leaflet requires browser APIs — must be loaded client-side only
+const HyperlocalMap = dynamic(
+  () => import("@/components/analysis/HyperlocalMap"),
+  { ssr: false, loading: () => <div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" /> }
+);
 import DecisionCard from "@/components/decision/DecisionCard";
 import ValidationStatusCard from "@/components/validation/ValidationStatus";
 
@@ -23,6 +30,9 @@ export default function ReturnAnalysisPage() {
   const [pricing, setPricing] = useState<any>(null);
   const [logistics, setLogistics] = useState<any>(null);
   const [decision, setDecision] = useState<any>(null);
+  const [sellerLat, setSellerLat] = useState<number | null>(null);
+  const [sellerLng, setSellerLng] = useState<number | null>(null);
+  const [sellerCity, setSellerCity] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,6 +57,10 @@ export default function ReturnAnalysisPage() {
 
           if (sk === "META") {
             setStatus(item.status || "ANALYZING");
+            // Extract seller location from META
+            if (item.lat) setSellerLat(parseFloat(String(item.lat)));
+            if (item.lng) setSellerLng(parseFloat(String(item.lng)));
+            if (item.city) setSellerCity(item.city);
           }
 
           if (entityType === "IMAGE_VALIDATION" || sk.startsWith("VALIDATION#")) {
@@ -228,7 +242,12 @@ export default function ReturnAnalysisPage() {
 
       {/* Approve & List action for resale destinations */}
       {decision && (decision.destination === "INSTANT_RESALE" || decision.destination === "REFURBISH") && (
-        <ResaleAction returnId={returnId} />
+        <ResaleAction
+          returnId={returnId}
+          sellerLat={typeof sellerLat === "number" ? sellerLat : undefined}
+          sellerLng={typeof sellerLng === "number" ? sellerLng : undefined}
+          sellerCity={sellerCity}
+        />
       )}
 
       {/* Still analyzing */}
@@ -242,7 +261,12 @@ export default function ReturnAnalysisPage() {
   );
 }
 
-function ResaleAction({ returnId }: { returnId: string }) {
+function ResaleAction({ returnId, sellerLat, sellerLng, sellerCity }: {
+  returnId: string;
+  sellerLat?: number;
+  sellerLng?: number;
+  sellerCity?: string;
+}) {
   const [listing, setListing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [contactOpen, setContactOpen] = useState<string | null>(null);
@@ -271,6 +295,29 @@ function ResaleAction({ returnId }: { returnId: string }) {
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">Listed for Resale</h3>
         </div>
         <p className="text-sm text-gray-700 dark:text-gray-200 mb-4">{result.message}</p>
+
+        {/* Hyperlocal Buyer Radar Map — use real buyer lat/lng */}
+        {result.buyers && result.buyers.length > 0 && (
+          <div className="mb-6">
+            <HyperlocalMap
+              sellerLocation={{
+                lat: sellerLat || 12.9716,
+                lng: sellerLng || 77.5946,
+                city: sellerCity || result.buyers[0]?.city || "Location",
+              }}
+              buyers={result.buyers.map((b: any) => ({
+                name: b.name || "Buyer",
+                city: b.city || "",
+                distance_km: b.distance_km ?? 10,
+                match_score: b.match_score ?? 0.5,
+                email: b.email,
+                lat: b.lat ? parseFloat(String(b.lat)) : undefined,
+                lng: b.lng ? parseFloat(String(b.lng)) : undefined,
+              }))}
+            />
+          </div>
+        )}
+
         {result.buyers && result.buyers.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">

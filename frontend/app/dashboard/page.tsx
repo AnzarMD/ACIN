@@ -21,7 +21,6 @@ interface ImpactData {
   total_co2_saved_kg: number;
   total_revenue_recovered_inr: number;
   landfill_diverted_percentage: number;
-  average_processing_time_hours: number;
   revenue_recovery_rate: number;
   average_cvs_score: number;
   destinations: Record<string, { count: number; percentage: number }>;
@@ -195,12 +194,7 @@ export default function DashboardPage() {
       {/* Processing Performance */}
       <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
         <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Processing Performance</h2>
-        <div className="grid grid-cols-3 gap-6">
-          <div className="text-center">
-            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{metrics.average_processing_time_hours}h</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Avg Processing Time</p>
-            <p className="text-xs text-green-600">vs 3-5 days baseline</p>
-          </div>
+        <div className="grid grid-cols-2 gap-6">
           <div className="text-center">
             <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{metrics.landfill_diverted_percentage}%</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">Landfill Diversion</p>

@@ -133,37 +133,57 @@ Return ONLY this JSON:
 
 
 def compute_base_prices(original_price: int, grade: str, category: str,
-                        demand_score: int, repair_cost: int) -> tuple:
-    """Compute base prices from market bands before LLM refinement."""
-    bands = PRICING_BANDS.get(category, PRICING_BANDS["Other"])
-    grade_band = bands.get(grade, bands.get("B"))
-    fast_f, balanced_f, max_f = grade_band
+                        demand_score: int, repair_cost: int,
+                        condition_score: int = None) -> tuple:
+    """Compute prices directly from condition_score.
 
-    # Demand adjustment: high demand (>70) adds up to 8% to balanced/max
-    demand_boost = 0.0
-    if demand_score >= 80:
-        demand_boost = 0.08
-    elif demand_score >= 60:
-        demand_boost = 0.04
+    Formula (per user requirement):
+      Max Profit  = condition_score% × original_price
+      Balanced    = (condition_score - 5)% × original_price
+      Fast Sale   = (condition_score - 12)% × original_price
 
-    fast = int(original_price * fast_f)
-    balanced = int(original_price * (balanced_f + demand_boost))
-    max_p = int(original_price * (max_f + demand_boost))
+    Demand boost: if demand_score >= 80, add +3% to all prices.
+    Repair cost deducted proportionally from all prices.
+    """
+    # If no condition_score provided, estimate from grade
+    if condition_score is None:
+        grade_to_score = {"A": 90, "B": 77, "C": 60, "D": 35}
+        condition_score = grade_to_score.get(grade, 70)
 
-    # Subtract repair cost from all prices if applicable
+    # Clamp to valid range
+    condition_score = max(1, min(100, condition_score))
+
+    # Demand boost
+    demand_boost = 3 if demand_score >= 80 else (1 if demand_score >= 60 else 0)
+
+    # Core formula: condition_score% drives max price
+    max_pct = (condition_score + demand_boost) / 100
+    balanced_pct = (condition_score - 5 + demand_boost) / 100
+    fast_pct = (condition_score - 12 + demand_boost) / 100
+
+    # Ensure fast sale is at least 15% below max
+    fast_pct = min(fast_pct, max_pct - 0.15)
+    # Ensure all percentages are positive
+    max_pct = max(max_pct, 0.08)
+    balanced_pct = max(balanced_pct, 0.06)
+    fast_pct = max(fast_pct, 0.04)
+
+    max_p = int(original_price * max_pct)
+    balanced = int(original_price * balanced_pct)
+    fast = int(original_price * fast_pct)
+
+    # Deduct repair cost proportionally
     if repair_cost > 0:
-        fast = max(int(fast * 0.85), fast - repair_cost)
-        balanced = max(int(balanced * 0.85), balanced - repair_cost)
-        max_p = max(int(max_p * 0.85), max_p - repair_cost)
+        max_p = max(int(max_p * 0.9), max_p - repair_cost)
+        balanced = max(int(balanced * 0.9), balanced - repair_cost)
+        fast = max(int(fast * 0.9), fast - repair_cost)
 
-    # Round to nearest 49/99 (psychological pricing)
+    # Round to nearest ×9 for psychological pricing
     def round_price(p: int) -> int:
         if p <= 0:
             return 99
-        hundreds = (p // 100) * 100
-        if p % 100 <= 50:
-            return max(99, hundreds - 1)  # e.g. 3000 → 2999
-        return max(99, hundreds + 99)     # e.g. 3060 → 3099
+        r = round(p / 50) * 50 - 1   # e.g. 996 → 999, 944 → 949
+        return max(49, r)
 
     return round_price(fast), round_price(balanced), round_price(max_p)
 
@@ -193,9 +213,10 @@ class DynamicRepricingAgent:
         repair_cost = int(product.get("estimated_repair_cost_inr", 0))
         condition_score = int(product.get("condition_score", 70))
 
-        # Compute realistic base prices from market bands
+        # Compute realistic base prices from condition_score (not static bands)
         fast, balanced, max_p = compute_base_prices(
-            original_price, grade, category, demand_score, repair_cost
+            original_price, grade, category, demand_score, repair_cost,
+            condition_score=condition_score
         )
 
         discount_pct = round((1 - balanced / max(original_price, 1)) * 100, 1)
@@ -273,10 +294,11 @@ async def repricing_agent(state: dict) -> dict:
     except Exception:
         original = int(state.get("original_price") or 5000)
         grade = state.get("product_analysis", {}).get("grade", "B") if state.get("product_analysis") else "B"
+        condition_score = state.get("product_analysis", {}).get("condition_score", 75) if state.get("product_analysis") else 75
         category = state.get("category", "Electronics")
         demand = state.get("market_analysis", {}).get("demand_score", 60) if state.get("market_analysis") else 60
 
-        fast, balanced, max_p = compute_base_prices(original, grade, category, demand, 0)
+        fast, balanced, max_p = compute_base_prices(original, grade, category, demand, 0, condition_score=condition_score)
         return {"pricing_analysis": {
             "fast_sale_price": fast,
             "balanced_price": balanced,

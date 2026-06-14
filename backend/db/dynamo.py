@@ -77,6 +77,8 @@ async def create_return_record(return_data, status, validation_result) -> str:
     location = return_data.location.dict() if return_data.location else {}
     city = location.get("city", "")
     pincode = location.get("pincode", "")
+    lat = location.get("lat")
+    lng = location.get("lng")
 
     table.put_item(Item=to_decimal({
         "PK": return_pk(return_id),
@@ -93,6 +95,8 @@ async def create_return_record(return_data, status, validation_result) -> str:
         "stage": "VALIDATION",
         "city": city,
         "pincode": pincode,
+        "lat": lat,       # ← exact returner latitude
+        "lng": lng,       # ← exact returner longitude
         "validation_status": validation_result.status if validation_result else "PENDING",
         "image_fcs": validation_result.fcs if validation_result else 0,
         "fraud_score": 0,

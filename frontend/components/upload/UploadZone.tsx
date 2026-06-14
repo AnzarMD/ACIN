@@ -25,6 +25,8 @@ export default function UploadZone() {
   const [returnReason, setReturnReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [city, setCity] = useState("");
+  const [sellerLat, setSellerLat] = useState<number | null>(null);
+  const [sellerLng, setSellerLng] = useState<number | null>(null);
   const [pincode, setPincode] = useState("");
   const [referenceImageUrl, setReferenceImageUrl] = useState("");
 
@@ -135,7 +137,12 @@ export default function UploadZone() {
           product_name: productName,
           category: category,
           original_price: parseInt(originalPrice) || 5000,
-          location: city ? { lat: 19.076, lng: 72.877, city, pincode: pincode || "400001" } : undefined,
+          location: city ? {
+            lat: sellerLat ?? 0,
+            lng: sellerLng ?? 0,
+            city,
+            pincode: pincode || "000000",
+          } : undefined,
         }),
         headers: { "Content-Type": "application/json" },
       });
@@ -342,9 +349,81 @@ export default function UploadZone() {
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g., Mumbai, Delhi, Bangalore"
+              placeholder="Auto-filled when you allow location, or type manually"
               className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Your Location
+              <span className="ml-1 text-xs text-gray-500 font-normal">(used to find nearest buyers)</span>
+            </label>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!navigator.geolocation) {
+                  alert("Geolocation not supported by your browser");
+                  return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                  async (pos) => {
+                    const lat = parseFloat(pos.coords.latitude.toFixed(6));
+                    const lng = parseFloat(pos.coords.longitude.toFixed(6));
+                    setSellerLat(lat);
+                    setSellerLng(lng);
+
+                    // Reverse geocode to auto-fill city and pincode
+                    try {
+                      const res = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10`,
+                        { headers: { "Accept-Language": "en" } }
+                      );
+                      const data = await res.json();
+                      const addr = data.address || {};
+
+                      // Priority order for city name — avoid village/locality names
+                      // zoom=10 gives city-level, but we still check multiple fields
+                      const detectedCity =
+                        addr.city ||            // Major cities: "Mumbai", "Delhi"
+                        addr.district ||        // District: "Bangalore Urban"
+                        addr.state_district ||  // State district
+                        addr.town ||            // Smaller towns
+                        addr.county ||          // County level
+                        addr.state ||           // Fallback: state name
+                        "";
+
+                      // Clean up common suffixes like "District", "Urban"
+                      const cleanCity = detectedCity
+                        .replace(/\s*district$/i, "")
+                        .replace(/\s*urban$/i, "")
+                        .replace(/\s*rural$/i, "")
+                        .trim();
+
+                      // Extract pincode
+                      const detectedPincode = addr.postcode || "";
+
+                      if (cleanCity) setCity(cleanCity);
+                      if (detectedPincode) setPincode(detectedPincode);
+                    } catch {
+                      // Geocoding failed — lat/lng still captured, city stays manual
+                    }
+                  },
+                  () => alert("Location access denied. Please type your city manually.")
+                );
+              }}
+              className="w-full flex items-center justify-center gap-2 border border-dashed border-blue-400 dark:border-blue-600 text-blue-600 dark:text-blue-400 rounded-lg px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-950/20 transition"
+            >
+              <span>📍</span>
+              {sellerLat && sellerLng
+                ? `✓ Location set — ${city || `${sellerLat.toFixed(4)}, ${sellerLng.toFixed(4)}`}`
+                : "Allow location — auto-fills city & pincode"}
+            </button>
+            {/* Show captured coords small below button */}
+            {sellerLat && sellerLng && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-center">
+                {sellerLat.toFixed(5)}, {sellerLng.toFixed(5)}
+              </p>
+            )}
           </div>
         </div>
       </section>
