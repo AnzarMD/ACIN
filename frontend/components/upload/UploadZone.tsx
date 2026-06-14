@@ -15,6 +15,7 @@ export default function UploadZone() {
   const [submitting, setSubmitting] = useState(false);
   const [validatedUrls, setValidatedUrls] = useState<string[]>([]);
   const [manualReviewMessage, setManualReviewMessage] = useState("");
+  const [locationAccuracyWarning, setLocationAccuracyWarning] = useState("");
   const router = useRouter();
 
   // Product details form
@@ -198,6 +199,21 @@ export default function UploadZone() {
                 }`}
               >
                 <img src={URL.createObjectURL(file)} alt={`Upload ${idx + 1}`} className="w-full h-20 object-cover" />
+                {/* Remove button — always visible on hover, always tappable */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImages((prev) => prev.filter((_, i) => i !== idx));
+                    setValidatedUrls((prev) => prev.filter((_, i) => i !== idx));
+                    setFlaggedIndex([]);
+                    setValidation("idle");
+                  }}
+                  className="absolute top-1 left-1 bg-black/60 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors"
+                  title="Remove image"
+                >
+                  <span className="text-xs leading-none">✕</span>
+                </button>
                 {validation === "pass" && <CheckCircle className="absolute top-1 right-1 h-4 w-4 text-green-500" />}
                 {flaggedIndex.includes(idx) && <XCircle className="absolute top-1 right-1 h-4 w-4 text-red-500" />}
               </div>
@@ -369,46 +385,65 @@ export default function UploadZone() {
                   async (pos) => {
                     const lat = parseFloat(pos.coords.latitude.toFixed(6));
                     const lng = parseFloat(pos.coords.longitude.toFixed(6));
+                    const accuracyMeters = Math.round(pos.coords.accuracy);
                     setSellerLat(lat);
                     setSellerLng(lng);
 
-                    // Reverse geocode to auto-fill city and pincode
+                    // Canonical city map — normalises Nominatim variants to stored names
+                    const CITY_MAP: Record<string, string> = {
+                      "bengaluru": "Bangalore", "bangalore": "Bangalore",
+                      "bangalore urban": "Bangalore", "bengaluru urban": "Bangalore",
+                      "bangalore north": "Bangalore", "bangalore south": "Bangalore",
+                      "bangalore east": "Bangalore", "bangalore west": "Bangalore",
+                      "mumbai": "Mumbai", "greater mumbai": "Mumbai", "bombay": "Mumbai",
+                      "delhi": "Delhi", "new delhi": "Delhi", "central delhi": "Delhi",
+                      "south delhi": "Delhi", "north delhi": "Delhi",
+                      "chennai": "Chennai", "madras": "Chennai",
+                      "hyderabad": "Hyderabad", "secunderabad": "Hyderabad",
+                      "rangareddy": "Hyderabad",
+                      "pune": "Pune", "pimpri-chinchwad": "Pune", "pimpri chinchwad": "Pune",
+                      "kolkata": "Kolkata", "calcutta": "Kolkata",
+                      "jaipur": "Jaipur",
+                    };
+
+                    const resolveCity = (addr: Record<string, string>): string => {
+                      const raw = (addr.city || addr.town || "").trim();
+                      if (!raw) return "";
+                      return CITY_MAP[raw.toLowerCase()] ?? raw;
+                    };
+
                     try {
                       const res = await fetch(
-                        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10`,
+                        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&addressdetails=1`,
                         { headers: { "Accept-Language": "en" } }
                       );
                       const data = await res.json();
                       const addr = data.address || {};
-
-                      // Priority order for city name — avoid village/locality names
-                      // zoom=10 gives city-level, but we still check multiple fields
-                      const detectedCity =
-                        addr.city ||            // Major cities: "Mumbai", "Delhi"
-                        addr.district ||        // District: "Bangalore Urban"
-                        addr.state_district ||  // State district
-                        addr.town ||            // Smaller towns
-                        addr.county ||          // County level
-                        addr.state ||           // Fallback: state name
-                        "";
-
-                      // Clean up common suffixes like "District", "Urban"
-                      const cleanCity = detectedCity
-                        .replace(/\s*district$/i, "")
-                        .replace(/\s*urban$/i, "")
-                        .replace(/\s*rural$/i, "")
-                        .trim();
-
-                      // Extract pincode
+                      const finalCity = resolveCity(addr);
                       const detectedPincode = addr.postcode || "";
-
-                      if (cleanCity) setCity(cleanCity);
+                      if (finalCity) setCity(finalCity);
                       if (detectedPincode) setPincode(detectedPincode);
                     } catch {
                       // Geocoding failed — lat/lng still captured, city stays manual
                     }
+
+                    // Warn if accuracy is poor (IP-based location, > 5km radius)
+                    if (accuracyMeters > 5000) {
+                      setLocationAccuracyWarning(
+                        `Low accuracy (±${(accuracyMeters / 1000).toFixed(0)} km) — your browser is using IP-based location, not GPS. Please type your city manually below.`
+                      );
+                    } else {
+                      setLocationAccuracyWarning("");
+                    }
                   },
-                  () => alert("Location access denied. Please type your city manually.")
+                  (err) => {
+                    if (err.code === err.PERMISSION_DENIED) {
+                      setLocationAccuracyWarning("Location access denied. Please type your city manually.");
+                    } else {
+                      setLocationAccuracyWarning("Could not get location. Please type your city manually.");
+                    }
+                  },
+                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
               }}
               className="w-full flex items-center justify-center gap-2 border border-dashed border-blue-400 dark:border-blue-600 text-blue-600 dark:text-blue-400 rounded-lg px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-950/20 transition"
@@ -418,8 +453,14 @@ export default function UploadZone() {
                 ? `✓ Location set — ${city || `${sellerLat.toFixed(4)}, ${sellerLng.toFixed(4)}`}`
                 : "Allow location — auto-fills city & pincode"}
             </button>
-            {/* Show captured coords small below button */}
-            {sellerLat && sellerLng && (
+            {locationAccuracyWarning && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-start gap-1">
+                <span>⚠️</span>
+                <span>{locationAccuracyWarning}</span>
+              </p>
+            )}
+            {/* Show captured coords — only when accuracy is good */}
+            {sellerLat && sellerLng && !locationAccuracyWarning && (
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-center">
                 {sellerLat.toFixed(5)}, {sellerLng.toFixed(5)}
               </p>

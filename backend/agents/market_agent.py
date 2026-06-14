@@ -63,7 +63,8 @@ class MarketIntelligenceAgent:
         city = location.get("city", "Mumbai") if isinstance(location, dict) else "Mumbai"
 
         # ── Query real buyer count from DynamoDB ──────────────────────────
-        from db.buyers import count_active_buyers
+        from db.buyers import count_active_buyers, canonical_city
+        city = canonical_city(city)  # normalise "Bengaluru" → "Bangalore" etc.
         category = state.get("category", "Electronics")
         real_buyer_count = count_active_buyers(city, category)
 
@@ -79,7 +80,9 @@ class MarketIntelligenceAgent:
             f"(use this EXACT number for buyer_count)\n"
             f"Demand score formula: "
             f"0.35×buyer_strength + 0.25×velocity + 0.20×seasonality + 0.15×category_index + 0.05×social\n"
-            f"buyer_strength = min(1.0, {real_buyer_count}/15) — normalize against 15 as a realistic city max\n"
+            f"buyer_strength = min(1.0, {real_buyer_count}/25) — normalize against 25 as city max\n"
+            f"If buyer_count >= 10, demand_score must be at least 55.\n"
+            f"If buyer_count >= 20, demand_score must be at least 70.\n"
             f"Region must be '{city}'. Expected sale days 1-14.\n"
         )
 
@@ -117,15 +120,23 @@ async def market_intelligence_agent(state: dict) -> dict:
         city = location.get("city", "Mumbai") if isinstance(location, dict) else "Mumbai"
         category = state.get("category", "Electronics")
         real_buyers = count_active_buyers(city, category)
+        # Demand score: floor at 55 if 10+ buyers, 70 if 20+ buyers
+        if real_buyers >= 20:
+            base_score = 70 + min(25, real_buyers - 20)
+        elif real_buyers >= 10:
+            base_score = 55 + (real_buyers - 10) * 1.5
+        else:
+            base_score = min(50, 30 + real_buyers * 3)
+        demand_score = int(min(95, base_score))
         return {"market_analysis": {
-            "demand_score": min(95, 40 + real_buyers * 3),
+            "demand_score": demand_score,
             "buyer_count": real_buyers,
-            "expected_sale_days": max(1, 14 - real_buyers),
+            "expected_sale_days": max(1, 14 - real_buyers // 2),
             "region": city,
             "seasonality_factor": 1.0,
             "category_demand_index": 0.7,
             "velocity_score": 0.6,
-            "demand_trend": "stable",
+            "demand_trend": "rising" if real_buyers >= 15 else "stable" if real_buyers >= 5 else "declining",
             "confidence": 75,
         }}
 

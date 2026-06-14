@@ -68,40 +68,70 @@ def list_all_buyers() -> list:
     return resp.get("Items", [])
 
 
+# Canonical city name map — Nominatim and user input produce many variants.
+# All aliases map to the single name used in BUYER records.
+_CITY_ALIASES: dict[str, str] = {
+    # Bangalore
+    "bengaluru": "Bangalore",
+    "bangalore": "Bangalore",
+    "bangaluru": "Bangalore",
+    "bengalooru": "Bangalore",
+    "blr": "Bangalore",
+    # Mumbai
+    "mumbai": "Mumbai",
+    "bombay": "Mumbai",
+    "greater mumbai": "Mumbai",
+    # Delhi
+    "delhi": "Delhi",
+    "new delhi": "Delhi",
+    "new delhi district": "Delhi",
+    "delhi district": "Delhi",
+    # Chennai
+    "chennai": "Chennai",
+    "madras": "Chennai",
+    # Hyderabad
+    "hyderabad": "Hyderabad",
+    "cyberabad": "Hyderabad",
+    "secunderabad": "Hyderabad",
+    # Pune
+    "pune": "Pune",
+    "pune": "Pune",
+    # Kolkata
+    "kolkata": "Kolkata",
+    "calcutta": "Kolkata",
+    # Jaipur
+    "jaipur": "Jaipur",
+}
+
+
+def canonical_city(city: str) -> str:
+    """Normalise any city name variant to the canonical stored form."""
+    return _CITY_ALIASES.get(city.strip().lower(), city.strip())
+
+
 # ─── Buyer Matching ──────────────────────────────────────────────────────────
 
 
 def count_active_buyers(city: str, category: str) -> int:
     """Count active buyers for a city/category from DynamoDB."""
+    city = canonical_city(city)
     all_buyers = list_all_buyers()
     count = 0
     for b in all_buyers:
         if not b.get("active", True):
             continue
-        city_match = b.get("city", "").lower() == city.lower()
+        city_match = canonical_city(b.get("city", "")) == city
         cat = b.get("category_interest", "")
         category_match = cat.lower() == category.lower() or cat == "Any"
         if city_match and category_match:
             count += 1
-    # Also count buyers in the same city with "Any" category
-    any_count = sum(
-        1 for b in all_buyers
-        if b.get("city", "").lower() == city.lower() and b.get("category_interest") == "Any"
-    )
     return count
 
 
 def match_buyers(city: str, category: str, price: int, limit: int = 20,
                  seller_lat: float = None, seller_lng: float = None) -> list:
-    """Find buyers interested in this category, within budget.
-
-    When seller_lat/lng are provided, calculates distance and computes a
-    composite match_score. Falls back to city-only matching otherwise.
-
-    Match score weights:
-      0.40 * interest + 0.25 * distance_score + 0.15 * price_affinity
-      + 0.10 * reliability + 0.10 * activity
-    """
+    """Find buyers interested in this category, within budget."""
+    city = canonical_city(city)
     all_buyers = list_all_buyers()
     matched = []
 
@@ -120,7 +150,7 @@ def match_buyers(city: str, category: str, price: int, limit: int = 20,
 
         # If no seller coordinates, use strict city matching (backward compat)
         if seller_lat is None or seller_lng is None:
-            city_match = buyer_city.strip().lower() == city.strip().lower()
+            city_match = canonical_city(buyer_city) == city
             if city_match and category_match and budget_match:
                 matched.append(b)
             continue
@@ -136,7 +166,7 @@ def match_buyers(city: str, category: str, price: int, limit: int = 20,
             )
         else:
             # No buyer coords — fall back to city match with default distance
-            city_match = buyer_city.strip().lower() == city.strip().lower()
+            city_match = canonical_city(buyer_city) == city
             if not city_match:
                 continue
             distance_km = 10.0  # assume ~10km for same-city without coords
